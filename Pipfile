@@ -1,13 +1,19 @@
 [[source]]
-name = "pypi"
-url = "https://pypi.org/simple"
+name = "pypi-thu"
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 verify_ssl = true
 
 [packages]
 flask = "*"
+pillow = "*"
+matplotlib = "*"
+opencv-python = "*"
+tensorflow = "*"
+scikit-learn = "*"
 
 [dev-packages]
 pytest = "*"
+pytest-benchmark = "*"
 
 [requires]
 python_version = "3.6"

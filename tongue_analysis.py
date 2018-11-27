@@ -11,7 +11,6 @@ import numpy as np
 import time
 
 
-
 def process_img(fileName, sess):
     blocks = []
     im = np.array(cv2.imread(fileName))[:,:,[2,1,0]]
@@ -153,6 +152,7 @@ def get_tongue(im_ori):
     tongue[np.where(im==1)] = im_ori[np.where(im==1)]
     return tongue
 
+
 def split(im):
     im_l = cv2.cvtColor(im, cv2.COLOR_BGR2Lab)[:,:,0]
     l_thr = max(int(np.sum(im_l)/np.sum(im_l>0) + 65), 250)
@@ -189,7 +189,7 @@ def split(im):
     return (shetai, shezhi)
 
 
-def analysis_shezhi(shezhi, im):
+def analyze_shezhi(shezhi, im):
 #     im = cv2.imread(file_path)
     b_data = im[:,:,0][np.where(shezhi)]
     g_data = im[:,:,1][np.where(shezhi)]
@@ -210,10 +210,7 @@ def analysis_shezhi(shezhi, im):
             return('舌质绛')
 
 
-# In[6]:
-
-
-def analysis_shetai(shetai, im):
+def analyze_shetai(shetai, im):
 #     im = cv2.imread(file_path)
     b_data = im[:,:,0][np.where(shetai)]
     g_data = im[:,:,1][np.where(shetai)]
@@ -232,9 +229,6 @@ def analysis_shetai(shetai, im):
         return('舌苔黄')
     else:
         return('舌苔白')
-
-
-# In[7]:
 
 
 def workflow(fileName):
@@ -263,15 +257,15 @@ def workflow(fileName):
     im_lab[:,:,0] = im_l
     tongue = cv2.cvtColor(im_lab,cv2.COLOR_Lab2BGR)
     shetai, shezhi = split(tongue)
-    print(analysis_shezhi(shezhi, tongue))
+    print(analyze_shezhi(shezhi, tongue))
     if np.sum(shetai)/np.sum(shezhi)>0.5:
-        print(analysis_shetai(shetai, tongue))
+        print(analyze_shetai(shetai, tongue))
 
 
-def setup():
+def setup(fileName):
     with tf.Graph().as_default():
         output_graph_def = tf.GraphDef()
-        output_graph_path = './tongue.pb'
+        output_graph_path = fileName
         with open(output_graph_path, 'rb') as f:
             output_graph_def.ParseFromString(f.read())
             _ = tf.import_graph_def(output_graph_def, name="")
@@ -279,7 +273,7 @@ def setup():
         return sess
 
 
-def analysis(fileName, sess):
+def analyze(fileName, sess):
     mosaic, im = process_img(fileName, sess)
     im_lab = cv2.cvtColor(im[:,:,[2,1,0]], cv2.COLOR_BGR2Lab)
     l = np.sum(im_lab[:,:,0])/(im_lab[:,:,0].shape[0]*im_lab[:,:,0].shape[1])
@@ -302,9 +296,9 @@ def analysis(fileName, sess):
     im_lab[:,:,0] = im_l
     tongue = cv2.cvtColor(im_lab,cv2.COLOR_Lab2BGR)
     shetai, shezhi = split(tongue)
-    shezhi_res = analysis_shezhi(shezhi, tongue)
+    shezhi_res = analyze_shezhi(shezhi, tongue)
     shetai_res = ''
     if np.sum(shetai)/np.sum(shezhi)>0.5:
-        shetai_res = analysis_shetai(shetai, tongue)
+        shetai_res = analyze_shetai(shetai, tongue)
 
     return {'mosaic_img':mosaic, 'tongue_img':im[:,:,[2,1,0]], 'shezhi':shezhi_res, 'shetai':shetai_res}
