@@ -10,4 +10,3 @@ def test_listen(client):
     rv = client.post('/')
     assert '200 OK' == rv.status
     assert b'ok' == rv.data
-

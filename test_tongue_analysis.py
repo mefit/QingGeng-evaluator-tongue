@@ -34,4 +34,3 @@ def test_analyze_image_1(sess, benchmark):
 #
 #   Image.fromarray(result['mosaic_img']).save('mosaic.jpg', 'jpeg')
 #
-
