@@ -12,12 +12,15 @@ import time
 
 
 def process_img(fileName, sess):
+    direction_ = False
     blocks = []
     im = np.array(cv2.imread(fileName))[:,:,[2,1,0]]
     x, y, channels = im.shape
     if y>x:
         im = np.rot90(im, -1)
         x, y, channels = im.shape
+        direction_ = True
+
     if x*y>1000000:
         new_x, new_y = int(np.sqrt(x*1000000/y)), int(np.sqrt(y*1000000/x))
     else:
@@ -112,6 +115,11 @@ def process_img(fileName, sess):
     # mosaic.save('temp3.jpg')
 
     im = out[top_:bottom_, left_:right_]
+
+    if direction_:
+        im = np.rot90(im)
+        mosaic = np.rot90(mosaic)
+        
     return [mosaic, im]
 
 
