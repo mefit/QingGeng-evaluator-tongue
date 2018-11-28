@@ -7,6 +7,7 @@ verify_ssl = true
 flask = "*"
 celery = {extras = ["redis"]}
 redis = "==2.10.6"
+requests = "*"
 pillow = "*"
 matplotlib = "*"
 opencv-python = "*"
