@@ -9,5 +9,5 @@ def listen():
     evaluate.delay(
         request.form['user_id'],
         request.form['id'],
-        request.form['tongue_image'])
+        request.form['tongue_image'] if 'tongue_image' in request.form else None)
     return "ok", 200
