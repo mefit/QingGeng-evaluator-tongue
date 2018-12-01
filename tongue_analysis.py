@@ -11,6 +11,33 @@ import numpy as np
 import time
 
 
+class Sesses:
+    def __init__(self, sesses):
+        self.sesses = sesses
+    
+    def __getitem__(self, n):
+        if isinstance(n, int):
+            return self.sesses[n]
+        elif isinstance(n, slice):
+            start = n.start
+            stop = n.stop
+            if start is None:
+                start = 0
+            if stop is None:
+                stop = len(self.sesses)
+            return self.sesses[start:stop]
+    
+    def __iter__(self):
+        return self.sesses
+    
+    def __enter__(self):
+        return self.sesses
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        for sess in self.sesses:
+            sess.close()
+            
+
 def process_img(fileName, sess):
     direction_ = False
     blocks = []
@@ -39,7 +66,7 @@ def process_img(fileName, sess):
 
     for i in range(new_x//150):
         for j in range(new_y//150):
-            block = out[i*150:(i+1)*150, j*150:(j+1)*150]
+            block = out[i*150:(i+1)*150, j*150:(j+1)*150]/255.0
             blocks.append(block)
             rho.append(np.sum(T[i*150:(i+1)*150, j*150:(j+1)*150])/(150*150))
     rho = np.reshape(rho, (new_x//150, new_y//150))
@@ -115,12 +142,14 @@ def process_img(fileName, sess):
     # mosaic.save('temp3.jpg')
 
     im = out[top_:bottom_, left_:right_]
+    central = out[central_x*150:central_x*150+150, central_y*150:central_y*150+150]
 
     if direction_:
         im = np.rot90(im)
         mosaic = np.rot90(mosaic)
-        
-    return [mosaic, im]
+        central = np.rot90(central)
+
+    return [mosaic, im, central]
 
 
 def get_tongue(im_ori):
@@ -269,44 +298,50 @@ def workflow(fileName):
     if np.sum(shetai)/np.sum(shezhi)>0.5:
         print(analyze_shetai(shetai, tongue))
 
+def cnn_analyze_shetai(sess, central):
+    shetai_result = ['', '舌苔白', '舌苔黄', '舌苔灰', '舌苔黑']
+    input = sess.graph.get_tensor_by_name("x:0")
+    output = sess.graph.get_tensor_by_name("dnn/outputs/results:0")
 
-def setup(fileName):
+    results = sess.run(output, feed_dict={input:[central]})
+    return shetai_result[np.argmax(results)]
+
+def cnn_analyze_shezhi(sess, central):
+    shezhi_result = ['舌质淡红', '舌质淡红', '舌质淡白', '舌质红', '舌质绛', '舌质青紫']
+    input = sess.graph.get_tensor_by_name("x:0")
+    output = sess.graph.get_tensor_by_name("dnn/outputs/results:0")
+
+    results = sess.run(output, feed_dict={input:[central]})
+    return shezhi_result[np.argmax(results)]
+    
+
+def setup(location_model, shetai_model, shezhi_model):
     with tf.Graph().as_default():
         output_graph_def = tf.GraphDef()
-        output_graph_path = fileName
+        output_graph_path = location_model
         with open(output_graph_path, 'rb') as f:
             output_graph_def.ParseFromString(f.read())
             _ = tf.import_graph_def(output_graph_def, name="")
-        sess = tf.Session()
-        return sess
+        sess0 = tf.Session()
+    with tf.Graph().as_default():
+        output_graph_def = tf.GraphDef()
+        output_graph_path = shetai_model
+        with open(output_graph_path, 'rb') as f:
+            output_graph_def.ParseFromString(f.read())
+            _ = tf.import_graph_def(output_graph_def, name="")
+        sess1 = tf.Session()
+    with tf.Graph().as_default():
+        output_graph_def = tf.GraphDef()
+        output_graph_path = shezhi_model
+        with open(output_graph_path, 'rb') as f:
+            output_graph_def.ParseFromString(f.read())
+            _ = tf.import_graph_def(output_graph_def, name="")
+        sess2 = tf.Session()
+    return Sesses([sess0, sess1, sess2])
 
 
 def analyze(fileName, sess):
-    mosaic, im = process_img(fileName, sess)
-    im_lab = cv2.cvtColor(im[:,:,[2,1,0]], cv2.COLOR_BGR2Lab)
-    l = np.sum(im_lab[:,:,0])/(im_lab[:,:,0].shape[0]*im_lab[:,:,0].shape[1])
-    im_lab = np.float64(im_lab)
-    im_lab[:,:,0] += 150 - l
-    im_lab[im_lab>255]=255
-    im_lab[im_lab<0]=0
-    im_lab = np.uint8(im_lab)
-    im = cv2.cvtColor(im_lab,cv2.COLOR_Lab2BGR)
-
-    tongue = get_tongue(im)
-    im_lab = cv2.cvtColor(tongue, cv2.COLOR_BGR2Lab)
-    im_l = im_lab[:,:,0]
-    l = np.sum(im_l)/np.sum(im_l>0)
-    im_l = np.float64(im_l)
-    im_l[np.where(im_l>0)] += 150 - l
-    im_l[im_l>255]=255
-    im_l[im_l<0]=0
-    im_l = np.uint8(im_l)
-    im_lab[:,:,0] = im_l
-    tongue = cv2.cvtColor(im_lab,cv2.COLOR_Lab2BGR)
-    shetai, shezhi = split(tongue)
-    shezhi_res = analyze_shezhi(shezhi, tongue)
-    shetai_res = ''
-    if np.sum(shetai)/np.sum(shezhi)>0.5:
-        shetai_res = analyze_shetai(shetai, tongue)
-
-    return {'mosaic_img':mosaic, 'tongue_img':im[:,:,[2,1,0]], 'shezhi':shezhi_res, 'shetai':shetai_res}
+    mosaic, im, central = process_img(fileName, sess[0])
+    shetai_res = cnn_analyze_shetai(sess[1], central)
+    shezhi_res = cnn_analyze_shezhi(sess[2], central)
+    return {'mosaic_img':mosaic, 'tongue_img':im, 'shezhi':shezhi_res, 'shetai':shetai_res}

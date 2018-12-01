@@ -7,27 +7,21 @@ from tongue_analysis import setup as setup_ # to avoid name conflicts
 from tongue_analysis import analyze
 
 
-@pytest.fixture
-def sess():
-    sess = setup_('./tongue.pb')
-    yield sess
-    sess.close()
-
-
 def test_session_loading(benchmark):
     def run():
-        sess = setup_('./tongue.pb')
-        sess.close()
+        setup_('model/tongue.pb', 'model/shetai.pb', 'model/shezhi.pb')
     benchmark(run)
 
-def test_analyze_image_0(sess, benchmark):
+def test_analyze_image_0(benchmark):
     def run():
-        analyze('test_0.jpg', sess = sess)
+        with setup_('model/tongue.pb', 'model/shetai.pb', 'model/shezhi.pb') as sess:
+            analyze('test/test_0.jpg', sess = sess)
     benchmark(run)
 
-def test_analyze_image_1(sess, benchmark):
+def test_analyze_image_1(benchmark):
     def run():
-        analyze('test_1.jpg', sess = sess)
+        with setup_('model/tongue.pb', 'model/shetai.pb', 'model/shezhi.pb') as sess:
+            analyze('test/test_1.jpg', sess = sess)
     benchmark(run)
 
 #
