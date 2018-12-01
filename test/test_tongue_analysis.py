@@ -1,3 +1,7 @@
+import sys
+import pathlib
+sys.path.append(str(pathlib.Path.cwd()))
+
 import pytest
 from tongue_analysis import setup as setup_ # to avoid name conflicts
 from tongue_analysis import analyze
